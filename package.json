@@ -1,0 +1,34 @@
+{
+  "name": "@avanda/orm",
+  "version": "0.1.3",
+  "description": "Avanda ORM ",
+  "main": "build/index.js",
+  "types": "index.ts",
+  "author": "Wharley01",
+  "license": "MIT",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "dev": "nodemon"
+  },
+  "dependencies": {
+    "@avanda/error": "^0.2.0",
+    "lodash": "^4.17.21",
+    "reflect-metadata": "^0.1.13",
+    "sequelize": "^6.6.5"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.12",
+    "@types/debug": "^4.1.7",
+    "@types/express": "^4.17.13",
+    "@types/lodash": "^4.14.175",
+    "@types/node": "^16.4.13",
+    "nodemon": "^2.0.12",
+    "source-map-support": "^0.5.19",
+    "ts-node": "^10.2.0",
+    "tslint": "^6.1.3",
+    "typescript": "^4.3.5"
+  }
+}

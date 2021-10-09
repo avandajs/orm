@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "target": "ES2017",
+    "moduleResolution": "node",
+    "outDir": "build",
+    "rootDir": "./",
+    "baseUrl": "./",
+    "paths": {
+      "@avanda/orm/*": ["/*"],
+      "@avanda/orm/type/*": ["types/*"]
+    }
+  },
+  "lib": ["es2015"]
+}
