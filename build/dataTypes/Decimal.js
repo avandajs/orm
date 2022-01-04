@@ -5,14 +5,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const sequelize_1 = require("sequelize");
 const DataType_1 = __importDefault(require("./DataType"));
-class Text extends DataType_1.default {
+class Decimal extends DataType_1.default {
     getType() {
-        if (this.size) {
-            return sequelize_1.DataTypes.STRING(typeof this.size == 'number' ? this.size : undefined);
-        }
-        else {
-            return sequelize_1.DataTypes.TEXT;
-        }
+        let size = typeof this.size == 'number' ? [this.size] : this.size;
+        return sequelize_1.DataTypes.DECIMAL(...size);
     }
 }
-exports.default = Text;
+exports.default = Decimal;

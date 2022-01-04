@@ -6,6 +6,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 require("reflect-metadata");
 const Text_1 = __importDefault(require("../dataTypes/Text"));
 const Int_1 = __importDefault(require("../dataTypes/Int"));
+const Decimal_1 = __importDefault(require("../dataTypes/Decimal"));
+const Bool_1 = __importDefault(require("../dataTypes/Bool"));
+const Date_1 = __importDefault(require("../dataTypes/Date"));
+const JSON_1 = __importDefault(require("../dataTypes/JSON"));
+const Enum_1 = __importDefault(require("../dataTypes/Enum"));
 let column = function (dataType, options) {
     if (!options)
         options = {};
@@ -14,6 +19,8 @@ let column = function (dataType, options) {
         let properties = Reflect.getMetadata(metadataKey, target);
         dataType.size = options === null || options === void 0 ? void 0 : options.masSize;
         dataType.isNullable = options === null || options === void 0 ? void 0 : options.nullable;
+        dataType.setter = options === null || options === void 0 ? void 0 : options.setter;
+        dataType.getter = options === null || options === void 0 ? void 0 : options.getter;
         options.dataType = dataType;
         if (properties) {
             properties.push({
@@ -36,7 +43,29 @@ let text = function (options) {
 let int = function (options) {
     return column(new Int_1.default(), options);
 };
+let decimal = function (options) {
+    return column(new Decimal_1.default(), options);
+};
+let boolean = function (options) {
+    return column(new Bool_1.default(), options);
+};
+let date = function (options) {
+    return column(new Date_1.default(), options);
+};
+let json = function (options) {
+    return column(new JSON_1.default(), options);
+};
+let _enum = function (acceptedValues, options) {
+    let e = new Enum_1.default();
+    e.args = acceptedValues;
+    return column(e, options);
+};
 exports.default = {
     text,
-    int
+    int,
+    date,
+    json,
+    decimal,
+    enum: _enum,
+    boolean
 };
