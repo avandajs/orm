@@ -1,8 +1,7 @@
 import {DataTypes} from "sequelize";
 import DataType from "./DataType";
-import Model from "../model/model";
 
-export default class Int extends DataType<number>{
+export default class Int extends DataType<DataTypes.IntegerDataTypeConstructor>{
 
     getType() {
         return DataTypes.INTEGER
