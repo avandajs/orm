@@ -1,6 +1,6 @@
 import {DataTypes} from "sequelize";
 import DataType from "./DataType";
-import {StringDataType} from "sequelize/types/lib/data-types";
+import {StringDataType} from "sequelize/types";
 
 export default class Text extends DataType<StringDataType|DataTypes.TextDataTypeConstructor>{
     getType() {

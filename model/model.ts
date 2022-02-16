@@ -4,7 +4,7 @@ import ColumnOptions from "../types/ColumnOptions";
 import ModelShape from "../types/ModelShape";
 import WhereClause from "../types/WhereClause";
 import {runtimeError} from "@avanda/error";
-import {Fn} from "sequelize/types/lib/utils";
+import {Fn} from "sequelize/types/utils";
 import {Connection,Env} from "@avanda/app"
 import moment from 'moment'
 import ColumnNames from "../types/ColumnNames";

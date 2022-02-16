@@ -9,7 +9,7 @@ import Bool from "../dataTypes/Bool";
 import Date from "../dataTypes/Date";
 import JSON from "../dataTypes/JSON";
 import Enum from "../dataTypes/Enum";
-import {StringDataType} from "sequelize/types/lib/data-types";
+import {StringDataType} from "sequelize/types";
 import {DataTypes, EnumDataType} from "sequelize";
 
 
