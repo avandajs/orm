@@ -262,7 +262,7 @@ class Model {
                 continue;
             if (value.references)
                 value.references.sequelize = this.sequelize;
-            structure[prop] = Object.assign(Object.assign(Object.assign({ type, unique: value.unique ? value.unique : undefined, comment: value.comment, defaultValue: (_b = value === null || value === void 0 ? void 0 : value.dataType) === null || _b === void 0 ? void 0 : _b.value, allowNull: typeof value.nullable == 'undefined' ? false : value.nullable }, (value.references && {
+            structure[prop] = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({ type, unique: value.unique ? value.unique : undefined, comment: value.comment, defaultValue: (_b = value === null || value === void 0 ? void 0 : value.dataType) === null || _b === void 0 ? void 0 : _b.value, allowNull: typeof value.nullable == 'undefined' ? false : value.nullable }, (value.onDeleted && { onDelete: value.onDeleted })), (value.onUpdated && { onUpdated: value.onUpdated })), (value.references && {
                 references: {
                     model: await ((_c = value.references) === null || _c === void 0 ? void 0 : _c.init()),
                     key: 'id'

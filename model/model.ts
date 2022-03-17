@@ -1,4 +1,5 @@
-import {Model as SeqModel, ModelAttributes, ModelCtor, Op, Sequelize, fn, col} from "sequelize";
+import {Model as SeqModel, ModelAttributes, Op, Sequelize, fn, col} from "sequelize";
+import {ModelStatic} from "sequelize/types/model"
 import {snakeCase} from "lodash"
 import ColumnOptions from "../types/ColumnOptions";
 import ModelShape from "../types/ModelShape";
@@ -39,7 +40,7 @@ export default abstract class Model{
     protected tempColumn?: string
     protected tempSelectColumn?: string | Fn
 
-    private initInstance?: ModelCtor<any>
+    private initInstance?: ModelStatic<any>
 
     constructor() {
         this.connection = Connection({
@@ -329,7 +330,7 @@ export default abstract class Model{
 
     // query builder wrapper ends here
 
-    public async init(): Promise<ModelCtor<any>>{
+    public async init(): Promise<ModelStatic<any>>{
         if (this.initInstance)
             return this.initInstance;
 
@@ -338,7 +339,7 @@ export default abstract class Model{
         return this.initInstance
     }
 
-    private async convertToSequelize(): Promise<ModelCtor<any>>{
+    private async convertToSequelize(): Promise<ModelStatic<any>>{
         this.sequelize = await this.connection
         let structure: ModelAttributes<SeqModel> = {};
 
@@ -364,6 +365,8 @@ export default abstract class Model{
                 comment: value.comment,
                 defaultValue: value?.dataType?.value,
                 allowNull: typeof value.nullable == 'undefined' ? false: value.nullable,
+                ...(value.onDeleted && {onDelete: value.onDeleted}),
+                ...(value.onUpdated && {onUpdated: value.onUpdated}),
                 ...(value.references && {
                     references: {
                         model: await value.references?.init(),
@@ -504,7 +507,7 @@ export default abstract class Model{
                 delete props[key];
         })
 
-        return props as DataOf<this>
+        return props as unknown as DataOf<this>
     }
 
 //    Writing
