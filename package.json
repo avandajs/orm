@@ -1,6 +1,6 @@
 {
   "name": "@avanda/orm",
-  "version": "0.2.29",
+  "version": "0.2.30",
   "description": "Avanda ORM ",
   "main": "build/index.js",
   "types": "index.ts",
@@ -14,7 +14,7 @@
     "dev": "nodemon"
   },
   "dependencies": {
-    "@avanda/app": "^0.10.31",
+    "@avanda/app": "^1.10.6",
     "@avanda/error": "^0.2.3",
     "@types/faker": "^5.5.9",
     "faker": "^5.5.3",

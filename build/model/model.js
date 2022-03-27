@@ -206,10 +206,10 @@ class Model {
             offset
         });
         this.totalRows = (_b = (_a = result === null || result === void 0 ? void 0 : result.count) !== null && _a !== void 0 ? _a : result === null || result === void 0 ? void 0 : result.length) !== null && _b !== void 0 ? _b : 0;
-        console.log({ total: this.totalRows });
+        // console.log({total: this.totalRows})
         this.totalRecords = this.totalRows;
         this.totalPages = Math.ceil(this.totalRows / this.perPage);
-        console.log({ totalPages: this.totalPages });
+        // console.log({totalPages: this.totalPages})
         return (_c = result === null || result === void 0 ? void 0 : result.rows) !== null && _c !== void 0 ? _c : result;
     }
     async findBy(col, value) {
@@ -277,7 +277,6 @@ class Model {
                 async set(val) {
                     var _a, _b;
                     let newValue = await ((_b = (_a = value === null || value === void 0 ? void 0 : value.dataType) === null || _a === void 0 ? void 0 : _a.setter) === null || _b === void 0 ? void 0 : _b.call(_a, val));
-                    console.log({ newValue });
                     this.setDataValue('password', newValue);
                 }
             }));

@@ -282,12 +282,12 @@ export default abstract class Model{
 
         this.totalRows = result?.count ?? result?.length ?? 0
 
-        console.log({total: this.totalRows})
+        // console.log({total: this.totalRows})
         this.totalRecords = this.totalRows
 
         this.totalPages = Math.ceil(this.totalRows / this.perPage);
 
-        console.log({totalPages: this.totalPages})
+        // console.log({totalPages: this.totalPages})
 
 
         return result?.rows ?? result
@@ -382,7 +382,6 @@ export default abstract class Model{
                 ...(value?.dataType?.setter && {
                     async set(val){
                         let newValue = await value?.dataType?.setter?.(val)
-                        console.log({newValue})
                         this.setDataValue('password', newValue);
                     }
                 })
