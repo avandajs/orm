@@ -25,6 +25,7 @@ export default abstract class Model{
     private modelName?: string
 
     protected whereClauses?: WhereClause;
+    protected havingClauses?: WhereClause;
     protected columns?: Array<string|[Fn|string,string]>;
     protected currentPage: number = 1;
     protected totalPages: number = 1;
@@ -105,6 +106,10 @@ export default abstract class Model{
             Op.and)
     }
 
+    public having(){
+
+    }
+
     public whereRaw(condition: string){
         return this._where(
             condition,
@@ -178,33 +183,55 @@ export default abstract class Model{
             condition(this)
             this.nextedWhereDone = true
         }else if (typeof condition == 'object'){
-            this.updateWhereClauses(operand, condition);
+            this.updateClauses(operand, condition);
         }else if (typeof condition == 'string' && isRaw){
-            this.updateWhereClauses(operand, Model.convertRawToArray(condition));
+            this.updateClauses(operand, Model.convertRawToArray(condition));
+        }else{
+            this.tempColumn = condition as string
+        }
+        return this;
+    }
+    private _having(
+        condition: DataOf<this> | ColumnNames<this> | string | ((model: this) => void),
+        operand: symbol = Op.and,
+        isRaw: boolean = false
+    ){
+        this.closeQuery();
+        if (typeof condition == 'function'){
+            this.logicalOp = operand
+            condition(this)
+            this.nextedWhereDone = true
+        }else if (typeof condition == 'object'){
+            this.updateClauses(operand, condition, 'having');
+        }else if (typeof condition == 'string' && isRaw){
+            this.updateClauses(operand, Model.convertRawToArray(condition), 'having');
         }else{
             this.tempColumn = condition as string
         }
         return this;
     }
 
-    private updateWhereClauses(
+    private updateClauses(
         operand: symbol,
-        condition: DataOf<this>  | ((model: this) => void) | WhereClause
+        condition: DataOf<this>  | ((model: this) => void) | WhereClause,
+        target: 'where' | 'having' = 'where'
     ) {
-        if (this.whereClauses && operand == Op.or && typeof this.whereClauses?.hasOwnProperty(Op.and)) {
-            this.whereClauses = {
-                [operand]: [...this.whereClauses[Op.and as unknown as string]]
+        let constraintTarget = target == 'where' ? this.whereClauses:this.havingClauses;
+
+        if (constraintTarget && operand == Op.or && typeof constraintTarget?.hasOwnProperty(Op.and)) {
+            constraintTarget = {
+                [operand]: [...constraintTarget[Op.and as unknown as string]]
             }
         }
 
-        if (!this.whereClauses) {
-            this.whereClauses = {
+        if (!constraintTarget) {
+            constraintTarget = {
                 [operand]: []
             }
         }
 
-        if (!this.whereClauses[operand as unknown as string])
-            this.whereClauses[operand as unknown as string] = []
+        if (!constraintTarget[operand as unknown as string])
+            constraintTarget[operand as unknown as string] = []
 
 
         if (this.logicalOp) {
@@ -217,11 +244,17 @@ export default abstract class Model{
         }
 
         if (!this.logicalOp) {
-            this.whereClauses[operand as unknown as string] = [...this.whereClauses[operand as unknown as string], condition]
+            constraintTarget[operand as unknown as string] = [...constraintTarget[operand as unknown as string], condition]
         }
 
         if (this.logicalOp) {
             // console.log(this.tempClauses)
+        }
+
+        if(target == 'where'){
+            this.whereClauses = constraintTarget;
+        }else{
+            this.havingClauses = constraintTarget;
         }
         return condition;
     }
@@ -421,7 +454,7 @@ export default abstract class Model{
     }
 
     whereNotUpdatedSince(count: number, unit: 'days' | 'hours' | 'minutes' |'months' | 'years' = 'days') {
-        this.updateWhereClauses(Op.and, {
+        this.updateClauses(Op.and, {
             ['updatedAt']: {
                 [Op.lt]: moment().subtract(count,unit).toDate()
             }
@@ -430,7 +463,7 @@ export default abstract class Model{
     }
 
     whereHasExpired(){
-        this.updateWhereClauses(Op.and, {
+        this.updateClauses(Op.and, {
             ['expiresOn']: {
                 [Op.lte]: new Date()
             }
@@ -438,7 +471,7 @@ export default abstract class Model{
         return this;
     }
     whereHasNotExpired(){
-        this.updateWhereClauses(Op.and, {
+        this.updateClauses(Op.and, {
             ['expiresOn']: {
                 [Op.gt]: new Date()
             }
@@ -447,7 +480,7 @@ export default abstract class Model{
     }
 
     whereNotCreatedSince(count: number, unit: 'days' | 'hours' | 'minutes' |'months' | 'years' = 'days') {
-        this.updateWhereClauses(Op.and, {
+        this.updateClauses(Op.and, {
             ['createdAt']: {
                 [Op.lt]: moment().subtract(count,unit).toDate()
             }
@@ -456,7 +489,7 @@ export default abstract class Model{
     }
 
     whereColIn(column: ColumnNames<this>,values: any[]) {
-        this.updateWhereClauses(Op.and, {
+        this.updateClauses(Op.and, {
             [column as string]: {
                 [Op.in]: values
             }

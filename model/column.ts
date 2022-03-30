@@ -13,7 +13,7 @@ import {StringDataType} from "sequelize/types";
 import {DataTypes, EnumDataType} from "sequelize";
 
 
-let column = function <ValueDataType>(dataType: DataType<ValueDataType>,options?: ColumnOptions<ValueDataType>){
+const column = function <ValueDataType>(dataType: DataType<ValueDataType>,options?: ColumnOptions<ValueDataType>){
     if (!options)
         options = {};
 
@@ -43,27 +43,27 @@ let column = function <ValueDataType>(dataType: DataType<ValueDataType>,options?
     }
 }
 
-let text = function (options?: ColumnOptions<StringDataType|DataTypes.TextDataTypeConstructor>){
+const text = function (options?: ColumnOptions<StringDataType|DataTypes.TextDataTypeConstructor>){
     return column<StringDataType|DataTypes.TextDataTypeConstructor>(new Text(),options)
 }
 
-let int = function (options?: ColumnOptions<DataTypes.IntegerDataTypeConstructor>){
+const int = function (options?: ColumnOptions<DataTypes.IntegerDataTypeConstructor>){
     return column<DataTypes.IntegerDataTypeConstructor>(new Int(), options)
 }
-let decimal = function (options?: ColumnOptions<DataTypes.DecimalDataType>){
+const decimal = function (options?: ColumnOptions<DataTypes.DecimalDataType>){
     return column<DataTypes.DecimalDataType>(new Decimal(), options)
 }
-let boolean = function (options?: ColumnOptions<DataTypes.AbstractDataTypeConstructor>){
+const boolean = function (options?: ColumnOptions<DataTypes.AbstractDataTypeConstructor>){
     return column<DataTypes.AbstractDataTypeConstructor>(new Bool(), options)
 }
 
-let date = function (options?: ColumnOptions<DataTypes.DateDataTypeConstructor>){
+const date = function (options?: ColumnOptions<DataTypes.DateDataTypeConstructor>){
     return column< DataTypes.DateDataTypeConstructor>(new Date(), options)
 }
-let json = function (options?: ColumnOptions<DataTypes.AbstractDataTypeConstructor>){
+const json = function (options?: ColumnOptions<DataTypes.AbstractDataTypeConstructor>){
     return column< DataTypes.AbstractDataTypeConstructor>(new JSON(), options)
 }
-let _enum = function (acceptedValues: string[] , options?: ColumnOptions<EnumDataType<string>>){
+const _enum = function (acceptedValues: string[] , options?: ColumnOptions<EnumDataType<string>>){
     let e = new Enum();
     e.args = acceptedValues
     return column<EnumDataType<string>>(e, options)

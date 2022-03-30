@@ -66,6 +66,8 @@ class Model {
     where(condition) {
         return this._where(condition, sequelize_1.Op.and);
     }
+    having() {
+    }
     whereRaw(condition) {
         return this._where(condition, sequelize_1.Op.and, true);
     }
@@ -124,30 +126,48 @@ class Model {
             this.nextedWhereDone = true;
         }
         else if (typeof condition == 'object') {
-            this.updateWhereClauses(operand, condition);
+            this.updateClauses(operand, condition);
         }
         else if (typeof condition == 'string' && isRaw) {
-            this.updateWhereClauses(operand, Model.convertRawToArray(condition));
+            this.updateClauses(operand, Model.convertRawToArray(condition));
         }
         else {
             this.tempColumn = condition;
         }
         return this;
     }
-    updateWhereClauses(operand, condition) {
-        var _a;
-        if (this.whereClauses && operand == sequelize_1.Op.or && typeof ((_a = this.whereClauses) === null || _a === void 0 ? void 0 : _a.hasOwnProperty(sequelize_1.Op.and))) {
-            this.whereClauses = {
-                [operand]: [...this.whereClauses[sequelize_1.Op.and]]
+    _having(condition, operand = sequelize_1.Op.and, isRaw = false) {
+        this.closeQuery();
+        if (typeof condition == 'function') {
+            this.logicalOp = operand;
+            condition(this);
+            this.nextedWhereDone = true;
+        }
+        else if (typeof condition == 'object') {
+            this.updateClauses(operand, condition, 'having');
+        }
+        else if (typeof condition == 'string' && isRaw) {
+            this.updateClauses(operand, Model.convertRawToArray(condition), 'having');
+        }
+        else {
+            this.tempColumn = condition;
+        }
+        return this;
+    }
+    updateClauses(operand, condition, target = 'where') {
+        let constraintTarget = target == 'where' ? this.whereClauses : this.havingClauses;
+        if (constraintTarget && operand == sequelize_1.Op.or && typeof (constraintTarget === null || constraintTarget === void 0 ? void 0 : constraintTarget.hasOwnProperty(sequelize_1.Op.and))) {
+            constraintTarget = {
+                [operand]: [...constraintTarget[sequelize_1.Op.and]]
             };
         }
-        if (!this.whereClauses) {
-            this.whereClauses = {
+        if (!constraintTarget) {
+            constraintTarget = {
                 [operand]: []
             };
         }
-        if (!this.whereClauses[operand])
-            this.whereClauses[operand] = [];
+        if (!constraintTarget[operand])
+            constraintTarget[operand] = [];
         if (this.logicalOp) {
             this.tempClauses = Object.assign(Object.assign({}, this.tempClauses), condition);
             return null;
@@ -156,10 +176,16 @@ class Model {
             condition = Object.assign(Object.assign({}, condition), this.tempClauses);
         }
         if (!this.logicalOp) {
-            this.whereClauses[operand] = [...this.whereClauses[operand], condition];
+            constraintTarget[operand] = [...constraintTarget[operand], condition];
         }
         if (this.logicalOp) {
             // console.log(this.tempClauses)
+        }
+        if (target == 'where') {
+            this.whereClauses = constraintTarget;
+        }
+        else {
+            this.havingClauses = constraintTarget;
         }
         return condition;
     }
@@ -308,7 +334,7 @@ class Model {
         return this;
     }
     whereNotUpdatedSince(count, unit = 'days') {
-        this.updateWhereClauses(sequelize_1.Op.and, {
+        this.updateClauses(sequelize_1.Op.and, {
             ['updatedAt']: {
                 [sequelize_1.Op.lt]: (0, moment_1.default)().subtract(count, unit).toDate()
             }
@@ -316,7 +342,7 @@ class Model {
         return this;
     }
     whereHasExpired() {
-        this.updateWhereClauses(sequelize_1.Op.and, {
+        this.updateClauses(sequelize_1.Op.and, {
             ['expiresOn']: {
                 [sequelize_1.Op.lte]: new Date()
             }
@@ -324,7 +350,7 @@ class Model {
         return this;
     }
     whereHasNotExpired() {
-        this.updateWhereClauses(sequelize_1.Op.and, {
+        this.updateClauses(sequelize_1.Op.and, {
             ['expiresOn']: {
                 [sequelize_1.Op.gt]: new Date()
             }
@@ -332,7 +358,7 @@ class Model {
         return this;
     }
     whereNotCreatedSince(count, unit = 'days') {
-        this.updateWhereClauses(sequelize_1.Op.and, {
+        this.updateClauses(sequelize_1.Op.and, {
             ['createdAt']: {
                 [sequelize_1.Op.lt]: (0, moment_1.default)().subtract(count, unit).toDate()
             }
@@ -340,7 +366,7 @@ class Model {
         return this;
     }
     whereColIn(column, values) {
-        this.updateWhereClauses(sequelize_1.Op.and, {
+        this.updateClauses(sequelize_1.Op.and, {
             [column]: {
                 [sequelize_1.Op.in]: values
             }
