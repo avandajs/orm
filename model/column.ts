@@ -11,6 +11,7 @@ import JSON from "../dataTypes/JSON";
 import Enum from "../dataTypes/Enum";
 import {StringDataType} from "sequelize/types";
 import {DataTypes, EnumDataType} from "sequelize";
+import Point from "../dataTypes/Point";
 
 
 const column = function <ValueDataType>(dataType: DataType<ValueDataType>,options?: ColumnOptions<ValueDataType>){
@@ -63,6 +64,9 @@ const date = function (options?: ColumnOptions<DataTypes.DateDataTypeConstructor
 const json = function (options?: ColumnOptions<DataTypes.AbstractDataTypeConstructor>){
     return column< DataTypes.AbstractDataTypeConstructor>(new JSON(), options)
 }
+const point = function (options?: ColumnOptions<DataTypes.GeographyDataType>){
+    return column< DataTypes.GeographyDataType>(new Point(), options)
+}
 const _enum = function (acceptedValues: string[] , options?: ColumnOptions<EnumDataType<string>>){
     let e = new Enum();
     e.args = acceptedValues
@@ -76,5 +80,6 @@ export default {
     json,
     decimal,
     enum: _enum,
-    boolean
+    boolean,
+    point
 }
