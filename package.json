@@ -1,6 +1,6 @@
 {
   "name": "@avanda/orm",
-  "version": "0.2.34",
+  "version": "0.2.35",
   "description": "Avanda ORM ",
   "main": "build/index.js",
   "types": "index.ts",

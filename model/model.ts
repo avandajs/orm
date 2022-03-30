@@ -75,8 +75,7 @@ export default abstract class Model{
 
     // query builder wrapper start here
 
-    public select(...columns: ColumnNames<this>[] | string[]){
-
+    public select(...columns: ColumnNames<this>[] | string[] | Fn[]){
 
         if (columns.length == 1 && columns[0] == "")
             return this;
