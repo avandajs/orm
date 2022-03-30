@@ -101,7 +101,7 @@ export default abstract class Model{
         return this;
     }
 
-    public where(condition: DataOf<this> | ColumnNames<this> | ((model: this) => void)){
+    public where(condition: DataOf<this> | ColumnNames<this> | ((model: this) => void) | Fn | Fn[]){
         return this._where(condition,
             Op.and)
     }
@@ -173,7 +173,7 @@ export default abstract class Model{
     }
 
     private _where(
-        condition: DataOf<this> | ColumnNames<this> | string | ((model: this) => void),
+        condition: DataOf<this> | ColumnNames<this> | string | ((model: this) => void) | Fn | Fn[],
         operand: symbol = Op.and,
         isRaw: boolean = false
     ){
@@ -192,7 +192,7 @@ export default abstract class Model{
         return this;
     }
     private _having(
-        condition: DataOf<this> | ColumnNames<this> | string | ((model: this) => void),
+        condition: DataOf<this> | ColumnNames<this> | string | ((model: this) => void) | Fn | Fn[],
         operand: symbol = Op.and,
         isRaw: boolean = false
     ){
