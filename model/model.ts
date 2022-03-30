@@ -177,7 +177,10 @@ export default abstract class Model{
         isRaw: boolean = false
     ){
         this.closeQuery();
-        if (typeof condition == 'function'){
+        if (condition instanceof Fn){
+            this.updateClauses(operand, {[operand]: condition});
+        }
+        else if (typeof condition == 'function'){
             this.logicalOp = operand
             condition(this)
             this.nextedWhereDone = true
@@ -212,7 +215,7 @@ export default abstract class Model{
 
     private updateClauses(
         operand: symbol,
-        condition: DataOf<this>  | ((model: this) => void) | WhereClause,
+        condition: DataOf<this>  | ((model: this) => void) | WhereClause | Fn,
         target: 'where' | 'having' = 'where'
     ) {
         let constraintTarget = target == 'where' ? this.whereClauses:this.havingClauses;
