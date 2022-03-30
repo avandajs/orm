@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const sequelize_1 = require("sequelize");
 const lodash_1 = require("lodash");
 const error_1 = require("@avanda/error");
+const utils_1 = require("sequelize/types/utils");
 const app_1 = require("@avanda/app");
 const moment_1 = __importDefault(require("moment"));
 /*
@@ -120,7 +121,10 @@ class Model {
     }
     _where(condition, operand = sequelize_1.Op.and, isRaw = false) {
         this.closeQuery();
-        if (typeof condition == 'function') {
+        if (condition instanceof utils_1.Fn) {
+            this.updateClauses(operand, { [operand]: condition });
+        }
+        else if (typeof condition == 'function') {
             this.logicalOp = operand;
             condition(this);
             this.nextedWhereDone = true;
