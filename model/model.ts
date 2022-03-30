@@ -307,6 +307,7 @@ export default abstract class Model{
                 ...this.whereClauses,
                 ...where,
             },
+            having: this.havingClauses,
             attributes: this.columns,
             order:this.orders,
             limit,

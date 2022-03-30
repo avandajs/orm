@@ -226,6 +226,7 @@ class Model {
         // @ts-ignore
         let result = await instance[fn]({
             where: Object.assign(Object.assign({}, this.whereClauses), where),
+            having: this.havingClauses,
             attributes: this.columns,
             order: this.orders,
             limit,
