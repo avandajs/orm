@@ -5,13 +5,13 @@ import ColumnOptions from "../types/ColumnOptions";
 import ModelShape from "../types/ModelShape";
 import WhereClause from "../types/WhereClause";
 import {runtimeError} from "@avanda/error";
-import {Fn} from "sequelize/types/utils";
+import {Fn} from 'sequelize/lib/utils';
 import {Connection,Env} from "@avanda/app"
 import moment from 'moment'
 import ColumnNames from "../types/ColumnNames";
 import DataOf from "../types/DataOf";
 
-
+// type Fn = typeof fn;
 
 /*
 * I know i should have a seperate class for query to make building query easier and more nestable,
@@ -86,10 +86,10 @@ export default abstract class Model{
         return this;
     }
 
-    public sum(column: ColumnNames<this>){
-        this.tempSelectColumn = fn('SUM', col(column as string))
-        return this;
-    }
+    // public sum(column: ColumnNames<this>){
+    //     this.tempSelectColumn = fn('SUM', col(column as string))
+    //     return this;
+    // }
 
 
 
@@ -194,7 +194,7 @@ export default abstract class Model{
         return this;
     }
     private _having(
-        condition: DataOf<this> | ColumnNames<this> | string | ((model: this) => void) | Fn | Fn[],
+        condition: DataOf<this> | ColumnNames<this> | string | ((model: Model) => void) | Fn | Fn[],
         operand: symbol = Op.and,
         isRaw: boolean = false
     ){

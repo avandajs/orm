@@ -1,4 +1,4 @@
-import {Fn} from "sequelize/types/utils";
+import {Fn} from "sequelize/lib/utils";
 import {fn,col} from "sequelize";
 
 const acos = (value: unknown): Fn => {
