@@ -31,7 +31,7 @@ const point = (longitude: number, latitude: number): Fn => {
 }
 
 const within = (column: string, point: Fn, range: number): Fn => {
-  return fn('ST_DWithin',col(column),point,+range * 0.016)
+  return fn('ST_Within',col(column),point,+range * 0.016)
 }
 
 export default {
