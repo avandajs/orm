@@ -16,6 +16,9 @@ const sin = (value) => {
 const sum = (value) => {
     return (0, sequelize_1.fn)('SIN', value);
 };
+const query = (query) => {
+    return (0, sequelize_1.literal)(query);
+};
 // let range = 10;
 // where(Sequelize.fn("ST_DWithin",
 // Sequelize.col("location"),
@@ -26,7 +29,16 @@ const point = (longitude, latitude) => {
     return (0, sequelize_1.fn)('ST_SetSRID', (0, sequelize_1.fn)('ST_MakePoint', longitude, latitude), 4326);
 };
 const within = (column, point, range) => {
-    return (0, sequelize_1.fn)('ST_DWithin', (0, sequelize_1.col)(column), point, +range * 0.016);
+    return (0, sequelize_1.fn)('ST_Within', (0, sequelize_1.col)(column), point, +range * 0.016);
+};
+const latitude = (column) => {
+    return (0, sequelize_1.fn)('ST_X', (0, sequelize_1.col)(column));
+};
+const longitude = (column) => {
+    return (0, sequelize_1.fn)('ST_Y', (0, sequelize_1.col)(column));
+};
+const distance = (column, { latitude, longitude }) => {
+    return (0, sequelize_1.fn)('ST_Distance_Sphere', (0, sequelize_1.col)(column), (0, sequelize_1.fn)('ST_PointFromText', `POINT(${latitude} ${longitude})`));
 };
 exports.default = {
     acos,
@@ -35,5 +47,9 @@ exports.default = {
     sin,
     sum,
     within,
-    point
+    point,
+    longitude,
+    latitude,
+    distance,
+    query
 };

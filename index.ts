@@ -5,6 +5,7 @@ import Fnc from "./model/fnc";
 import ColumnNames from "./types/ColumnNames";
 import DataOf from "./types/DataOf";
 import GeoPoint from "./types/GeoPoint";
+import Transaction from "./model/transaction";
 export {
     Model,
     Column,
@@ -12,5 +13,6 @@ export {
     Seeder,
     ColumnNames,
     DataOf,
-    GeoPoint
+    GeoPoint,
+    Transaction
 }
