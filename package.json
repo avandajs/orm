@@ -1,6 +1,6 @@
 {
   "name": "@avanda/orm",
-  "version": "0.2.88",
+  "version": "0.2.98",
   "description": "Avanda ORM ",
   "main": "build/index.js",
   "types": "index.ts",
@@ -14,12 +14,13 @@
     "dev": "nodemon"
   },
   "dependencies": {
-    "@avanda/app": "^1.10.9",
+    "@avanda/app": "^1.10.17",
     "@avanda/error": "^0.2.3",
     "@sequelize/core": "^7.0.0-alpha.10",
     "@types/faker": "^5.5.9",
     "@types/sequelize": "^4.28.11",
     "faker": "^5.5.3",
+    "knex": "^2.3.0",
     "lodash": "^4.17.21",
     "moment": "^2.29.1",
     "reflect-metadata": "^0.1.13",

@@ -7,6 +7,7 @@ import {
   QueryTypes,
   Sequelize,
   Transaction,
+  WhereOptions
 } from "sequelize";
 import { ModelIndexesOptions, ModelStatic } from "sequelize/types/model";
 import { isObject, snakeCase } from "lodash";
@@ -15,12 +16,13 @@ import ModelShape from "../types/ModelShape";
 import WhereClause from "../types/WhereClause";
 import { runtimeError } from "@avanda/error";
 import { Fn } from "sequelize/lib/utils";
-import { Connection, Env } from "@avanda/app";
+import { Connection, dbConfig, Env } from "@avanda/app";
 import moment from "moment";
 import ColumnNames from "../types/ColumnNames";
 import DataOf from "../types/DataOf";
 import { Literal } from "sequelize/lib/utils";
 import ModelTransaction from "./transaction";
+import { where } from "sequelize";
 
 // type Fn = typeof fn;
 
@@ -33,8 +35,11 @@ interface Datum {
   [k: string]: any;
 }
 
+
+// Sequelize.where()
+
 export default class Model {
-  protected static connection?: Promise<Sequelize>;
+  static connection?: Promise<Sequelize>;
   protected sequelize?: Sequelize;
   private modelName?: string;
 
@@ -56,27 +61,21 @@ export default class Model {
   protected tempTarget?: "having" | "where" = "where";
   protected tempSelectColumn?: string | Fn | Literal;
   protected transaction: ModelTransaction;
-  protected bindData: Datum;
+  protected bindData: Datum = {};
   private initInstance?: ModelStatic<any>;
-  private static logging: boolean | ((q) => void);
+  private static logging: boolean | ((q: any) => void);
 
-  constructor() {
-    if (!Model.connection) {
-      Model.connection = Connection({
-        dbDialect: Env.get<"mysql" | "mariadb" | "postgres" | "mssql">(
-          "DB_DRIVER",
-          "mysql"
-        ),
-        dbName: Env.get<string>("DB_NAME"),
-        dbPassword: Env.get<string>("DB_PASSWORD"),
-        dbUser: Env.get<string>("DB_USER", "root"),
-        logging: (sql) =>
-          Env.get<string>("DB_LOG") ? console.log(sql) : false,
-      });
-      Model.logging = (sql) =>
-        Env.get<string>("DB_LOG") ? console.log(sql) : false;
-    }
+  static setConnection(connection: Promise<Sequelize>) {
+    Model.connection = connection;
+    Model.logging = (sql) =>
+      Env.get<string>("DB_LOG") ? console.log(sql) : false;
   }
+
+  // constructor() {
+  //   if (!Model.connection) {
+  //     throw new Error("Model.setConnection not called");
+  //   }
+  // }
 
   setPerPage(perPage: number): this {
     this.perPage = perPage;
@@ -139,15 +138,20 @@ export default class Model {
   }
 
   public where(
-    condition:
-      | DataOf<this>
-      | ColumnNames<this>
-      | ((model: this) => void)
-      | Fn
-      | Fn[]
+    condition: DataOf<this> | ColumnNames<this> | ((model: this) => void)
   ) {
     return this._where(condition, Op.and);
   }
+
+
+  public sqWhere(clauses: WhereOptions){
+    this.whereClauses = clauses;
+
+    return this;
+    // this.sequelize?.where()
+  }
+
+
 
   public having(
     condition:
@@ -305,12 +309,12 @@ export default class Model {
       constraintTarget[operand as unknown as string] = [];
 
     if (this.logicalOp) {
-      this.tempClauses = [ ...this.tempClauses, condition ];
+      this.tempClauses = [...this.tempClauses, condition];
       return null;
     }
 
     if (!this.logicalOp && this.tempClauses) {
-      condition = [ condition, ...this.tempClauses ];
+      condition = [condition, ...this.tempClauses];
     }
 
     if (!this.logicalOp) {
@@ -581,7 +585,6 @@ export default class Model {
           },
         },
         indexes,
-
         // Other model options go here
       }
     );
@@ -599,10 +602,10 @@ export default class Model {
   ) {
     this.updateClauses(Op.and, {
       [dateCol]: {
-        [Op.or]:{
+        [Op.or]: {
           [Op.lt]: moment().subtract(count, unit).toDate(),
-          [Op.eq]: null
-        }
+          [Op.eq]: null,
+        },
       },
     });
     return this;
@@ -631,7 +634,9 @@ export default class Model {
   ) {
     this.updateClauses(Op.and, {
       ["createdAt"]: {
-        [Op.lte]: Sequelize.literal(`(NOW() - INTERVAL ${count} ${unit?.toUpperCase()})`),
+        [Op.lte]: Sequelize.literal(
+          `(NOW() - INTERVAL ${count} ${unit?.toUpperCase()})`
+        ),
       },
     });
     return this;
@@ -648,7 +653,6 @@ export default class Model {
     });
     return this;
   }
-
 
   whereColIn(column: ColumnNames<this>, values: any[]) {
     this.updateClauses(Op.and, {
@@ -727,7 +731,9 @@ export default class Model {
       !this.transaction.transaction
     ) {
       let sequelize = await Model.connection;
-      this.transaction.transaction = await sequelize.transaction();
+      this.transaction.transaction = await sequelize.transaction({
+        
+      });
     }
   }
 
@@ -748,6 +754,20 @@ export default class Model {
     ).destroy({
       where: this.whereClauses,
       ...(this.transaction && { transaction: this.transaction.transaction }),
+    });
+  }
+
+
+  public async softDelete() {
+    await this.loadTransaction();
+    return await (
+      await this.init()
+    ).update({
+      where: this.whereClauses,
+      ...(this.transaction && { transaction: this.transaction.transaction }),
+    },{
+      // @ts-ignore
+      deletedAt: new Date()
     });
   }
 
@@ -798,11 +818,15 @@ export default class Model {
 
   public async create(data: DataOf<this>): Promise<DataOf<this>> {
     await this.loadTransaction();
-    return await (
+    let created = await (
       await this.init()
     ).create(data, {
       ...(this.transaction && { transaction: this.transaction.transaction }),
     });
+
+
+
+    return created
   }
 
   public async createBulk(data: DataOf<this>[]): Promise<DataOf<this>[]> {

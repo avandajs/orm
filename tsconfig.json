@@ -9,7 +9,7 @@
     "paths": {
       "@avanda/orm/*": ["/*"],
       "@avanda/orm/type/*": ["types/*"]
-    }
+    },
   },
-  "lib": ["es2015"]
+  "lib": ["es2015"],
 }

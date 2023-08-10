@@ -10,6 +10,7 @@ const utils_1 = require("sequelize/lib/utils");
 const app_1 = require("@avanda/app");
 const moment_1 = __importDefault(require("moment"));
 const transaction_1 = __importDefault(require("./transaction"));
+// Sequelize.where()
 class Model {
     constructor() {
         this.columns = [];
@@ -22,17 +23,17 @@ class Model {
         this.tempClauses = [];
         this.nextedWhereDone = false;
         this.tempTarget = "where";
-        if (!Model.connection) {
-            Model.connection = (0, app_1.Connection)({
-                dbDialect: app_1.Env.get("DB_DRIVER", "mysql"),
-                dbName: app_1.Env.get("DB_NAME"),
-                dbPassword: app_1.Env.get("DB_PASSWORD"),
-                dbUser: app_1.Env.get("DB_USER", "root"),
-                logging: (sql) => app_1.Env.get("DB_LOG") ? console.log(sql) : false,
-            });
-            Model.logging = (sql) => app_1.Env.get("DB_LOG") ? console.log(sql) : false;
-        }
+        this.bindData = {};
     }
+    static setConnection(connection) {
+        Model.connection = connection;
+        Model.logging = (sql) => app_1.Env.get("DB_LOG") ? console.log(sql) : false;
+    }
+    // constructor() {
+    //   if (!Model.connection) {
+    //     throw new Error("Model.setConnection not called");
+    //   }
+    // }
     setPerPage(perPage) {
         this.perPage = perPage;
         return this;
@@ -81,6 +82,11 @@ class Model {
     }
     where(condition) {
         return this._where(condition, sequelize_1.Op.and);
+    }
+    sqWhere(clauses) {
+        this.whereClauses = clauses;
+        return this;
+        // this.sequelize?.where()
     }
     having(condition) {
         return this._where(condition, sequelize_1.Op.and, true, "having");
@@ -411,8 +417,8 @@ class Model {
             [dateCol]: {
                 [sequelize_1.Op.or]: {
                     [sequelize_1.Op.lt]: (0, moment_1.default)().subtract(count, unit).toDate(),
-                    [sequelize_1.Op.eq]: null
-                }
+                    [sequelize_1.Op.eq]: null,
+                },
             },
         });
         return this;
@@ -506,7 +512,7 @@ class Model {
         if (this.transaction instanceof transaction_1.default &&
             !this.transaction.transaction) {
             let sequelize = await Model.connection;
-            this.transaction.transaction = await sequelize.transaction();
+            this.transaction.transaction = await sequelize.transaction({});
         }
     }
     async truncate() {
@@ -537,7 +543,8 @@ class Model {
     }
     async create(data) {
         await this.loadTransaction();
-        return await (await this.init()).create(data, Object.assign({}, (this.transaction && { transaction: this.transaction.transaction })));
+        let created = await (await this.init()).create(data, Object.assign({}, (this.transaction && { transaction: this.transaction.transaction })));
+        return created;
     }
     async createBulk(data) {
         await this.loadTransaction();
