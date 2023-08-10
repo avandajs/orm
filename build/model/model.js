@@ -523,6 +523,13 @@ class Model {
         await this.loadTransaction();
         return await (await this.init()).destroy(Object.assign({ where: this.whereClauses }, (this.transaction && { transaction: this.transaction.transaction })));
     }
+    async softDelete() {
+        await this.loadTransaction();
+        return await (await this.init()).update(Object.assign({ where: this.whereClauses }, (this.transaction && { transaction: this.transaction.transaction })), {
+            // @ts-ignore
+            deletedAt: new Date()
+        });
+    }
     async update(data) {
         await this.loadTransaction();
         return (await (await this.init()).update(data, Object.assign({ where: this.whereClauses }, (this.transaction && { transaction: this.transaction.transaction }))));
