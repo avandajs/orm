@@ -568,6 +568,7 @@ export default class Model {
       {
         tableName: snakeCase(this.modelName || this.constructor.name),
         omitNull: false,
+        paranoid: true,
         hooks: {
           beforeCreate: async (model) => {
             let gl = await this.override(this.getOnlyPropsFromInstance());
@@ -583,6 +584,7 @@ export default class Model {
             );
             model.set({ ...gl, ...newData });
           },
+          
         },
         indexes,
         // Other model options go here
@@ -753,6 +755,7 @@ export default class Model {
       await this.init()
     ).destroy({
       where: this.whereClauses,
+      force: true,
       ...(this.transaction && { transaction: this.transaction.transaction }),
     });
   }
@@ -762,12 +765,9 @@ export default class Model {
     await this.loadTransaction();
     return await (
       await this.init()
-    ).update({
+    ).destroy({
       where: this.whereClauses,
       ...(this.transaction && { transaction: this.transaction.transaction }),
-    },{
-      // @ts-ignore
-      deletedAt: new Date()
     });
   }
 

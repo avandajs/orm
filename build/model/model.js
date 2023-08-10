@@ -392,6 +392,7 @@ class Model {
         return this.sequelize.define(this.modelName || this.constructor.name, structure, {
             tableName: (0, lodash_1.snakeCase)(this.modelName || this.constructor.name),
             omitNull: false,
+            paranoid: true,
             hooks: {
                 beforeCreate: async (model) => {
                     let gl = await this.override(this.getOnlyPropsFromInstance());
@@ -521,14 +522,11 @@ class Model {
     }
     async delete() {
         await this.loadTransaction();
-        return await (await this.init()).destroy(Object.assign({ where: this.whereClauses }, (this.transaction && { transaction: this.transaction.transaction })));
+        return await (await this.init()).destroy(Object.assign({ where: this.whereClauses, force: true }, (this.transaction && { transaction: this.transaction.transaction })));
     }
     async softDelete() {
         await this.loadTransaction();
-        return await (await this.init()).update(Object.assign({ where: this.whereClauses }, (this.transaction && { transaction: this.transaction.transaction })), {
-            // @ts-ignore
-            deletedAt: new Date()
-        });
+        return await (await this.init()).destroy(Object.assign({ where: this.whereClauses }, (this.transaction && { transaction: this.transaction.transaction })));
     }
     async update(data) {
         await this.loadTransaction();
