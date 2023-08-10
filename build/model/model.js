@@ -22,6 +22,7 @@ class Model {
         this.orders = [];
         this.tempClauses = [];
         this.nextedWhereDone = false;
+        this.paranoid = true;
         this.tempTarget = "where";
         this.bindData = {};
     }
@@ -392,7 +393,7 @@ class Model {
         return this.sequelize.define(this.modelName || this.constructor.name, structure, {
             tableName: (0, lodash_1.snakeCase)(this.modelName || this.constructor.name),
             omitNull: false,
-            paranoid: true,
+            paranoid: this.paranoid,
             hooks: {
                 beforeCreate: async (model) => {
                     let gl = await this.override(this.getOnlyPropsFromInstance());
@@ -408,6 +409,10 @@ class Model {
             indexes,
             // Other model options go here
         });
+    }
+    withDeleted() {
+        this.paranoid = false;
+        return this;
     }
     whereColIsNull(column) {
         this.whereRaw(`${column} is null`);

@@ -58,6 +58,7 @@ export default class Model {
   protected logicalOp?: symbol;
   protected nextedWhereDone: boolean = false;
   protected tempColumn?: string;
+  protected paranoid?: boolean = true;
   protected tempTarget?: "having" | "where" = "where";
   protected tempSelectColumn?: string | Fn | Literal;
   protected transaction: ModelTransaction;
@@ -568,7 +569,7 @@ export default class Model {
       {
         tableName: snakeCase(this.modelName || this.constructor.name),
         omitNull: false,
-        paranoid: true,
+        paranoid: this.paranoid,
         hooks: {
           beforeCreate: async (model) => {
             let gl = await this.override(this.getOnlyPropsFromInstance());
@@ -590,6 +591,11 @@ export default class Model {
         // Other model options go here
       }
     );
+  }
+
+  withDeleted(){
+    this.paranoid = false;
+    return this;
   }
 
   whereColIsNull<T>(column: ColumnNames<this> | T) {
