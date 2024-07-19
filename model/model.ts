@@ -173,6 +173,7 @@ export default class Model {
     return await sequelize.query(query, {
       replacements: binds,
       type: QueryTypes.SELECT,
+      logging: Env.get<boolean>("DB_LOG", false) ? true : false   
     });
   }
 
@@ -243,11 +244,11 @@ export default class Model {
     if (operator in operators) {
       ret = {
         [key]: {
-          [operators[operator]]: value in aliases ? aliases[value] : value,
+          [operators[operator]]: value in aliases ? aliases[value] : Number(value) ? Number(value) : value,
         },
       };
     } else {
-      ret = { [key]: value in aliases ? aliases[value] : value };
+      ret = { [key]: value in aliases ? aliases[value] : Number(value) ? Number(value) : value };
     }
     // console.log({ret})
     return ret;
@@ -411,7 +412,7 @@ export default class Model {
       limit,
       offset,
       bind: this.bindData,
-      logging: Model.logging,
+      logging: Env.get<boolean>("DB_LOG", false) ? true : false  
     };
     // @ts-ignore
     let result = await instance[fn]({
@@ -442,6 +443,7 @@ export default class Model {
       },
       having: this.havingClauses,
       attributes: [],
+      logging: Env.get<boolean>("DB_LOG", false) ? true : false  
     };
     return await instance.count(options);
   }
@@ -784,6 +786,7 @@ export default class Model {
     ).update(data, {
       where: this.whereClauses,
       ...(this.transaction && { transaction: this.transaction.transaction }),
+      logging: Env.get<boolean>("DB_LOG", false) ? console.log : false 
     })) as unknown as Promise<DataOf<this>>;
   }
 

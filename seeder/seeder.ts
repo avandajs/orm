@@ -1,5 +1,5 @@
-import Faker from "faker"
+import {Faker} from "@faker-js/faker"
 
 export default interface Seeder{
-    run(faker: Faker.FakerStatic): void | Promise<void>
+    run(faker: Faker): void | Promise<void>
 }
