@@ -11,7 +11,8 @@ const Bool_1 = __importDefault(require("../dataTypes/Bool"));
 const Date_1 = __importDefault(require("../dataTypes/Date"));
 const JSON_1 = __importDefault(require("../dataTypes/JSON"));
 const Enum_1 = __importDefault(require("../dataTypes/Enum"));
-let column = function (dataType, options) {
+const Point_1 = __importDefault(require("../dataTypes/Point"));
+const column = function (dataType, options) {
     if (!options)
         options = {};
     return (target, propertyKey) => {
@@ -37,25 +38,28 @@ let column = function (dataType, options) {
         }
     };
 };
-let text = function (options) {
+const text = function (options) {
     return column(new Text_1.default(), options);
 };
-let int = function (options) {
+const int = function (options) {
     return column(new Int_1.default(), options);
 };
-let decimal = function (options) {
+const decimal = function (options) {
     return column(new Decimal_1.default(), options);
 };
-let boolean = function (options) {
+const boolean = function (options) {
     return column(new Bool_1.default(), options);
 };
-let date = function (options) {
+const date = function (options) {
     return column(new Date_1.default(), options);
 };
-let json = function (options) {
+const json = function (options) {
     return column(new JSON_1.default(), options);
 };
-let _enum = function (acceptedValues, options) {
+const point = function (options) {
+    return column(new Point_1.default(), options);
+};
+const _enum = function (acceptedValues, options) {
     let e = new Enum_1.default();
     e.args = acceptedValues;
     return column(e, options);
@@ -67,5 +71,6 @@ exports.default = {
     json,
     decimal,
     enum: _enum,
-    boolean
+    boolean,
+    point
 };

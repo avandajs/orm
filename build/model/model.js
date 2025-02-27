@@ -6,28 +6,35 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const sequelize_1 = require("sequelize");
 const lodash_1 = require("lodash");
 const error_1 = require("@avanda/error");
+const utils_1 = require("sequelize/lib/utils");
 const app_1 = require("@avanda/app");
 const moment_1 = __importDefault(require("moment"));
-/*
-* I know i should have a seperate class for query to make building query easier and more nestable,
-* I think that's a future
-* */
+const transaction_1 = __importDefault(require("./transaction"));
+// Sequelize.where()
 class Model {
     constructor() {
+        this.columns = [];
         this.currentPage = 1;
         this.totalPages = 1;
         this.perPage = 10;
         this.totalRows = 0;
         this.totalRecords = 0;
         this.orders = [];
+        this.tempClauses = [];
         this.nextedWhereDone = false;
-        this.connection = (0, app_1.Connection)({
-            dbDialect: app_1.Env.get('DB_DRIVER', 'mysql'),
-            dbName: app_1.Env.get('DB_NAME'),
-            dbPassword: app_1.Env.get('DB_PASSWORD'),
-            dbUser: app_1.Env.get('DB_USER', 'root')
-        });
+        this.paranoid = true;
+        this.tempTarget = "where";
+        this.bindData = {};
     }
+    static setConnection(connection) {
+        Model.connection = connection;
+        Model.logging = (sql) => app_1.Env.get("DB_LOG") ? console.log(sql) : false;
+    }
+    // constructor() {
+    //   if (!Model.connection) {
+    //     throw new Error("Model.setConnection not called");
+    //   }
+    // }
     setPerPage(perPage) {
         this.perPage = perPage;
         return this;
@@ -38,44 +45,81 @@ class Model {
     getPropertyTypes(origin) {
         const properties = Reflect.getMetadata(origin.constructor.name, origin);
         const result = {};
-        properties.forEach(prop => {
+        properties.forEach((prop) => {
             let options = prop.options;
             options.dataType.value = this[prop.name];
             result[prop.name] = options;
         });
         return result;
     }
+    withTransaction(transaction) {
+        this.transaction = transaction;
+        return this;
+    }
     // query builder wrapper start here
     select(...columns) {
         if (columns.length == 1 && columns[0] == "")
             return this;
         this.tempSelectColumn = columns[columns.length - 1];
-        this.columns = columns;
+        this.columns = [...this.columns, ...columns];
+        // console.log({selecting: this.columns})
         return this;
     }
-    sum(column) {
-        this.tempSelectColumn = (0, sequelize_1.fn)('SUM', (0, sequelize_1.col)(column));
+    bind(data) {
+        this.bindData = data;
         return this;
     }
+    // public sum(column: ColumnNames<this>){
+    //     this.tempSelectColumn = fn('SUM', col(column as string))
+    //     return this;
+    // }
     as(alias) {
         if (!this.tempSelectColumn)
             throw new error_1.runtimeError(`'You haven't specified the expression to assign alias for`);
+        this.columns.pop();
         this.columns.push([this.tempSelectColumn, alias]);
+        this.tempSelectColumn = null;
         return this;
     }
     where(condition) {
         return this._where(condition, sequelize_1.Op.and);
     }
-    whereRaw(condition) {
-        return this._where(condition, sequelize_1.Op.and, true);
+    sqWhere(clauses) {
+        this.whereClauses = clauses;
+        return this;
+        // this.sequelize?.where()
+    }
+    having(condition) {
+        return this._where(condition, sequelize_1.Op.and, true, "having");
+    }
+    static async rawQuery(query, binds) {
+        let sequelize = await Model.connection;
+        return await sequelize.query(query, {
+            replacements: binds,
+            type: sequelize_1.QueryTypes.SELECT,
+            logging: app_1.Env.get("DB_LOG", false) ? true : false
+        });
+    }
+    whereRaw(condition, target = "where") {
+        return this._where(condition, sequelize_1.Op.and, true, target);
     }
     orWhere(condition) {
         return this._where(condition, sequelize_1.Op.or);
     }
     closeQuery() {
-        if (this.logicalOp && this.nextedWhereDone && this.whereClauses && this.tempClauses) {
+        if (this.logicalOp &&
+            this.nextedWhereDone &&
+            this.whereClauses &&
+            this.tempClauses) {
+            console.log({
+                whereClauses: JSON.stringify(this.whereClauses),
+                tempClauses: JSON.stringify(this.tempClauses),
+            });
             //    wrap the last one up
-            this.whereClauses[this.logicalOp] = [...this.whereClauses[this.logicalOp], this.tempClauses];
+            this.whereClauses[this.logicalOp] = [
+                ...(this.whereClauses[this.logicalOp] || []),
+                this.tempClauses,
+            ];
             this.nextedWhereDone = false;
             this.logicalOp = undefined;
             this.tempClauses = undefined;
@@ -85,19 +129,19 @@ class Model {
     static convertRawToArray(query) {
         ///[^\w\s]/
         let operators = {
-            '>': sequelize_1.Op.gt,
-            '<': sequelize_1.Op.lt,
-            '=': sequelize_1.Op.eq,
-            'not': sequelize_1.Op.not,
-            'is': sequelize_1.Op.is,
-            '!=': sequelize_1.Op.ne,
-            '>=': sequelize_1.Op.gte,
-            '<=': sequelize_1.Op.lte,
-            'like': sequelize_1.Op.like,
-            'not like': sequelize_1.Op.notLike,
+            ">": sequelize_1.Op.gt,
+            "<": sequelize_1.Op.lt,
+            "=": sequelize_1.Op.eq,
+            not: sequelize_1.Op.not,
+            is: sequelize_1.Op.is,
+            "!=": sequelize_1.Op.ne,
+            ">=": sequelize_1.Op.gte,
+            "<=": sequelize_1.Op.lte,
+            like: sequelize_1.Op.like,
+            "not like": sequelize_1.Op.notLike,
         };
         let aliases = {
-            'null': null
+            null: null,
         };
         let tokens = /(\w+)\s+([^\w\s]+|not|is|LIKE|NOT\s+LIKE)\s+(.+)/i.exec(query);
         if (!tokens)
@@ -108,58 +152,78 @@ class Model {
         let value = tokens[3];
         let ret = {};
         if (operator in operators) {
-            ret = { [key]: { [operators[operator]]: value in aliases ? aliases[value] : value } };
+            ret = {
+                [key]: {
+                    [operators[operator]]: value in aliases ? aliases[value] : Number(value) ? Number(value) : value,
+                },
+            };
         }
         else {
-            ret = { [key]: value in aliases ? aliases[value] : value };
+            ret = { [key]: value in aliases ? aliases[value] : Number(value) ? Number(value) : value };
         }
         // console.log({ret})
         return ret;
     }
-    _where(condition, operand = sequelize_1.Op.and, isRaw = false) {
-        this.closeQuery();
-        if (typeof condition == 'function') {
+    _where(condition, operand = sequelize_1.Op.and, isRaw = false, target = "where") {
+        if (condition instanceof utils_1.Fn) {
+            this.updateClauses(operand, { [operand]: condition }, target);
+        }
+        else if (typeof condition == "function") {
             this.logicalOp = operand;
             condition(this);
             this.nextedWhereDone = true;
+            this.closeQuery();
         }
-        else if (typeof condition == 'object') {
-            this.updateWhereClauses(operand, condition);
+        else if (typeof condition == "object") {
+            this.updateClauses(operand, condition, target);
         }
-        else if (typeof condition == 'string' && isRaw) {
-            this.updateWhereClauses(operand, Model.convertRawToArray(condition));
+        else if (typeof condition == "string" && isRaw) {
+            this.updateClauses(operand, Model.convertRawToArray(condition), target);
         }
         else {
             this.tempColumn = condition;
         }
         return this;
     }
-    updateWhereClauses(operand, condition) {
-        var _a;
-        if (this.whereClauses && operand == sequelize_1.Op.or && typeof ((_a = this.whereClauses) === null || _a === void 0 ? void 0 : _a.hasOwnProperty(sequelize_1.Op.and))) {
-            this.whereClauses = {
-                [operand]: [...this.whereClauses[sequelize_1.Op.and]]
+    updateClauses(operand, condition, target = "where") {
+        // console.log({target})
+        let constraintTarget = target == "where" ? this.whereClauses : this.havingClauses;
+        if (constraintTarget &&
+            operand == sequelize_1.Op.or &&
+            typeof (constraintTarget === null || constraintTarget === void 0 ? void 0 : constraintTarget.hasOwnProperty(sequelize_1.Op.and))) {
+            constraintTarget = {
+                [operand]: [...constraintTarget[sequelize_1.Op.and]],
             };
         }
-        if (!this.whereClauses) {
-            this.whereClauses = {
-                [operand]: []
+        if (!constraintTarget) {
+            constraintTarget = {
+                [operand]: [],
             };
         }
-        if (!this.whereClauses[operand])
-            this.whereClauses[operand] = [];
+        if (!constraintTarget[operand])
+            constraintTarget[operand] = [];
         if (this.logicalOp) {
-            this.tempClauses = Object.assign(Object.assign({}, this.tempClauses), condition);
+            this.tempClauses = [...this.tempClauses, condition];
             return null;
         }
         if (!this.logicalOp && this.tempClauses) {
-            condition = Object.assign(Object.assign({}, condition), this.tempClauses);
+            condition = [condition, ...this.tempClauses];
         }
         if (!this.logicalOp) {
-            this.whereClauses[operand] = [...this.whereClauses[operand], condition];
+            constraintTarget[operand] = [
+                ...constraintTarget[operand],
+                condition,
+            ];
         }
         if (this.logicalOp) {
             // console.log(this.tempClauses)
+        }
+        if (target == "where") {
+            this.whereClauses = constraintTarget;
+        }
+        else {
+            console.log("setting having");
+            this.havingClauses = constraintTarget;
         }
         return condition;
     }
@@ -176,72 +240,100 @@ class Model {
     greaterThan(value) {
         if (!this.tempColumn)
             throw new error_1.runtimeError("Specify column to apply greaterThan() to user the where() function");
-        this.whereRaw(`${this.tempColumn} > ${value}`);
+        this.whereRaw(`${this.tempColumn} > ${value}`, this.tempTarget);
+        return this;
+    }
+    lessThan(value) {
+        if (!this.tempColumn)
+            throw new error_1.runtimeError("Specify column to apply greaterThan() to user the where() function");
+        this.whereRaw(`${this.tempColumn} < ${value}`, this.tempTarget);
         return this;
     }
     async find(id) {
         var _a;
         this.closeQuery();
-        return (_a = (await this.queryDb('findOne', {
-            id
-        }))) !== null && _a !== void 0 ? _a : null;
+        return ((_a = (await this.queryDb("findOne", {
+            id,
+        }))) !== null && _a !== void 0 ? _a : null);
     }
     async findAll(id) {
-        return await this.queryDb('findAll', {
-            id
+        return await this.queryDb("findAll", {
+            id,
         });
     }
-    async queryDb(fn, where = {}, fields) {
-        var _a, _b, _c;
+    async queryDb(fn, where = {}, count = false) {
+        var _a;
         let instance = await this.init();
         let page = this.currentPage - 1;
         let offset = this.perPage * page;
         let limit = this.perPage;
+        // console.log({having: this.havingClauses})
+        // console.log({columns: this.columns})
         // @ts-ignore
-        let result = await instance[fn]({
+        let options = {
             where: Object.assign(Object.assign({}, this.whereClauses), where),
-            attributes: this.columns,
+            having: this.havingClauses,
+            attributes: this.columns.length > 0 ? this.columns : undefined,
             order: this.orders,
             limit,
-            offset
-        });
-        this.totalRows = (_b = (_a = result === null || result === void 0 ? void 0 : result.count) !== null && _a !== void 0 ? _a : result === null || result === void 0 ? void 0 : result.length) !== null && _b !== void 0 ? _b : 0;
-        console.log({ total: this.totalRows });
+            offset,
+            bind: this.bindData,
+            logging: app_1.Env.get("DB_LOG", false) ? true : false
+        };
+        // @ts-ignore
+        let result = await instance[fn](Object.assign(Object.assign({}, options), {
+            group: this.group,
+        }));
+        //
+        this.totalRows = count ? await instance.count(options) : this.perPage;
         this.totalRecords = this.totalRows;
         this.totalPages = Math.ceil(this.totalRows / this.perPage);
-        console.log({ totalPages: this.totalPages });
-        return (_c = result === null || result === void 0 ? void 0 : result.rows) !== null && _c !== void 0 ? _c : result;
+        return JSON.parse(JSON.stringify((_a = result === null || result === void 0 ? void 0 : result.rows) !== null && _a !== void 0 ? _a : result));
+    }
+    groupBy(group) {
+        this.group = group;
+        return this;
+    }
+    async count() {
+        let instance = await this.init();
+        let options = {
+            where: Object.assign({}, this.whereClauses),
+            having: this.havingClauses,
+            attributes: [],
+            logging: app_1.Env.get("DB_LOG", false) ? true : false
+        };
+        return await instance.count(options);
     }
     async findBy(col, value) {
-        return await this.queryDb('findOne', {
-            [col]: value
+        return await this.queryDb("findOne", {
+            [col]: value,
         });
     }
     async findAllBy(col, value) {
-        return await this.queryDb('findAll', {
-            [col]: value
+        return await this.queryDb("findAll", {
+            [col]: value,
         });
     }
     async first() {
         var _a;
         this.closeQuery();
-        this.orders.push(['id', 'ASC']);
-        return (_a = await this.queryDb('findOne')) !== null && _a !== void 0 ? _a : null;
+        this.orders.push(["id", "ASC"]);
+        return (_a = (await this.queryDb("findOne"))) !== null && _a !== void 0 ? _a : null;
     }
     async last() {
         var _a;
         this.closeQuery();
-        this.orders.push(['id', 'DESC']);
-        return (_a = await this.queryDb('findOne')) !== null && _a !== void 0 ? _a : null;
+        this.orders.push(["id", "DESC"]);
+        return (_a = (await this.queryDb("findOne"))) !== null && _a !== void 0 ? _a : null;
     }
-    orderBy(column, order = 'DESC') {
-        this.orders.push([column, order]);
+    orderBy(column, order = "DESC") {
+        this.orders.push((0, sequelize_1.literal)(`${column} ${order}`));
         return this;
     }
     async all() {
         var _a;
         this.closeQuery();
-        return (_a = await this.queryDb('findAll')) !== null && _a !== void 0 ? _a : [];
+        return (_a = (await this.queryDb("findAll"))) !== null && _a !== void 0 ? _a : [];
     }
     // query builder wrapper ends here
     async init() {
@@ -252,34 +344,48 @@ class Model {
     }
     async convertToSequelize() {
         var _a, _b, _c, _d, _e;
-        this.sequelize = await this.connection;
+        this.sequelize = await Model.connection;
         let structure = {};
+        let indexes = [];
         let props = this.getPropertyTypes(this);
         for (let prop in props) {
             let value = props[prop];
             let type = (_a = value === null || value === void 0 ? void 0 : value.dataType) === null || _a === void 0 ? void 0 : _a.getType();
             if (!type)
                 continue;
-            if (value.references)
+            if (value.references && typeof value.references != "string")
                 value.references.sequelize = this.sequelize;
-            structure[prop] = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({ type, unique: value.unique ? value.unique : undefined, comment: value.comment, defaultValue: (_b = value === null || value === void 0 ? void 0 : value.dataType) === null || _b === void 0 ? void 0 : _b.value, allowNull: typeof value.nullable == 'undefined' ? false : value.nullable }, (value.onDeleted && { onDelete: value.onDeleted })), (value.onUpdated && { onUpdated: value.onUpdated })), (value.references && {
+            // push index
+            if (typeof value.index == "boolean") {
+                indexes.push({
+                    fields: [prop],
+                });
+            }
+            else if (typeof value.index != "undefined") {
+                indexes.push(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, (value.index.use && { using: value.index.use })), { fields: [
+                        prop,
+                        ...(typeof value.index.with != "undefined" ? value.index.with : []),
+                    ] }), (value.index.name && { name: value.index.name })), (value.index.type && { type: value.index.type })), (value.index.where && { where: value.index.where })));
+            }
+            structure[prop] = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({ type, unique: value.unique ? value.unique : undefined, comment: value.comment, defaultValue: (_b = value === null || value === void 0 ? void 0 : value.dataType) === null || _b === void 0 ? void 0 : _b.value, allowNull: typeof value.nullable == "undefined" ? false : value.nullable }, (value.onDeleted && { onDelete: value.onDeleted })), (value.onUpdated && { onUpdated: value.onUpdated })), (value.references && {
                 references: {
-                    model: await ((_c = value.references) === null || _c === void 0 ? void 0 : _c.init()),
-                    key: 'id'
-                }
+                    model: typeof value.references == "string"
+                        ? value.references
+                        : await ((_c = value.references) === null || _c === void 0 ? void 0 : _c.init()),
+                    key: "id",
+                },
             })), (((_d = value === null || value === void 0 ? void 0 : value.dataType) === null || _d === void 0 ? void 0 : _d.getter) && {
                 get() {
                     var _a, _b;
                     const rawValue = this.getDataValue(prop);
                     return (_b = (_a = value === null || value === void 0 ? void 0 : value.dataType) === null || _a === void 0 ? void 0 : _a.getter) === null || _b === void 0 ? void 0 : _b.call(_a, rawValue);
-                }
+                },
             })), (((_e = value === null || value === void 0 ? void 0 : value.dataType) === null || _e === void 0 ? void 0 : _e.setter) && {
                 async set(val) {
                     var _a, _b;
                     let newValue = await ((_b = (_a = value === null || value === void 0 ? void 0 : value.dataType) === null || _a === void 0 ? void 0 : _a.setter) === null || _b === void 0 ? void 0 : _b.call(_a, val));
-                    console.log({ newValue });
-                    this.setDataValue('password', newValue);
-                }
+                    this.setDataValue("password", newValue);
+                },
             }));
         }
         // console.log(structure)
@@ -289,6 +395,7 @@ class Model {
         return this.sequelize.define(this.modelName || this.constructor.name, structure, {
             tableName: (0, lodash_1.snakeCase)(this.modelName || this.constructor.name),
             omitNull: false,
+            paranoid: this.paranoid,
             hooks: {
                 beforeCreate: async (model) => {
                     let gl = await this.override(this.getOnlyPropsFromInstance());
@@ -299,52 +406,76 @@ class Model {
                     let gl = await this.override(this.getOnlyPropsFromInstance());
                     let newData = await this.overrideUpdate(this.getOnlyPropsFromInstance());
                     model.set(Object.assign(Object.assign({}, gl), newData));
-                }
-            }
+                },
+            },
+            indexes,
             // Other model options go here
         });
+    }
+    withDeleted() {
+        this.paranoid = false;
+        return this;
     }
     whereColIsNull(column) {
         this.whereRaw(`${column} is null`);
         return this;
     }
-    whereNotUpdatedSince(count, unit = 'days') {
-        this.updateWhereClauses(sequelize_1.Op.and, {
-            ['updatedAt']: {
-                [sequelize_1.Op.lt]: (0, moment_1.default)().subtract(count, unit).toDate()
-            }
+    whereNotUpdatedSince(count, unit = "days", dateCol = "updatedAt") {
+        this.updateClauses(sequelize_1.Op.and, {
+            [dateCol]: {
+                [sequelize_1.Op.or]: {
+                    [sequelize_1.Op.lt]: (0, moment_1.default)().subtract(count, unit).toDate(),
+                    [sequelize_1.Op.eq]: null,
+                },
+            },
         });
         return this;
     }
     whereHasExpired() {
-        this.updateWhereClauses(sequelize_1.Op.and, {
-            ['expiresOn']: {
-                [sequelize_1.Op.lte]: new Date()
-            }
+        this.updateClauses(sequelize_1.Op.and, {
+            ["expiresOn"]: {
+                [sequelize_1.Op.lte]: new Date(),
+            },
         });
         return this;
     }
     whereHasNotExpired() {
-        this.updateWhereClauses(sequelize_1.Op.and, {
-            ['expiresOn']: {
-                [sequelize_1.Op.gt]: new Date()
-            }
+        this.updateClauses(sequelize_1.Op.and, {
+            ["expiresOn"]: {
+                [sequelize_1.Op.gt]: new Date(),
+            },
         });
         return this;
     }
-    whereNotCreatedSince(count, unit = 'days') {
-        this.updateWhereClauses(sequelize_1.Op.and, {
-            ['createdAt']: {
-                [sequelize_1.Op.lt]: (0, moment_1.default)().subtract(count, unit).toDate()
-            }
+    whereNotCreatedSince(count, unit = "days") {
+        this.updateClauses(sequelize_1.Op.and, {
+            ["createdAt"]: {
+                [sequelize_1.Op.lte]: sequelize_1.Sequelize.literal(`(NOW() - INTERVAL ${count} ${unit === null || unit === void 0 ? void 0 : unit.toUpperCase()})`),
+            },
+        });
+        return this;
+    }
+    whereCreatedSince(count, unit = "days") {
+        this.updateClauses(sequelize_1.Op.and, {
+            ["createdAt"]: {
+                [sequelize_1.Op.gt]: (0, moment_1.default)().add(count, unit).toDate(),
+            },
         });
         return this;
     }
     whereColIn(column, values) {
-        this.updateWhereClauses(sequelize_1.Op.and, {
+        this.updateClauses(sequelize_1.Op.and, {
             [column]: {
-                [sequelize_1.Op.in]: values
-            }
+                [sequelize_1.Op.in]: values,
+            },
+        });
+        return this;
+    }
+    whereColNotIn(column, values) {
+        this.updateClauses(sequelize_1.Op.and, {
+            [column]: {
+                [sequelize_1.Op.notIn]: values,
+            },
         });
         return this;
     }
@@ -372,7 +503,7 @@ class Model {
     }
     getOnlyPropsFromInstance() {
         let props = this.getPropertyTypes(this);
-        Object.keys(props).map(key => {
+        Object.keys(props).map((key) => {
             if (this[key])
                 props[key] = this[key];
             else
@@ -382,44 +513,54 @@ class Model {
     }
     //    Writing
     async save() {
-        return (await (await this.init()).create(this.getOnlyPropsFromInstance()));
+        await this.loadTransaction();
+        return await (await this.init()).create(this.getOnlyPropsFromInstance(), Object.assign({}, (this.transaction && { transaction: this.transaction.transaction })));
+    }
+    async loadTransaction() {
+        if (this.transaction instanceof transaction_1.default &&
+            !this.transaction.transaction) {
+            let sequelize = await Model.connection;
+            this.transaction.transaction = await sequelize.transaction({});
+        }
     }
     async truncate() {
-        return (await (await this.init()).destroy({
-            truncate: true
-        }));
+        await this.loadTransaction();
+        return await (await this.init()).destroy(Object.assign({ truncate: true }, (this.transaction && { transaction: this.transaction.transaction })));
     }
     async delete() {
-        return (await (await this.init()).destroy({
-            where: this.whereClauses
-        }));
+        await this.loadTransaction();
+        return await (await this.init()).destroy(Object.assign({ where: this.whereClauses, force: true }, (this.transaction && { transaction: this.transaction.transaction })));
+    }
+    async softDelete() {
+        await this.loadTransaction();
+        return await (await this.init()).destroy(Object.assign({ where: this.whereClauses }, (this.transaction && { transaction: this.transaction.transaction })));
     }
     async update(data) {
-        return await (await this.init()).update(data, {
-            where: this.whereClauses
-        });
+        await this.loadTransaction();
+        return (await (await this.init()).update(data, Object.assign(Object.assign({ where: this.whereClauses }, (this.transaction && { transaction: this.transaction.transaction })), { logging: app_1.Env.get("DB_LOG", false) ? console.log : false })));
     }
     async increment(column, by = 1) {
-        return (await (await this.init()).increment({ [column]: by }, {
-            where: this.whereClauses
-        }));
+        await this.loadTransaction();
+        return await (await this.init()).increment({ [column]: by }, Object.assign({ where: this.whereClauses }, (this.transaction && { transaction: this.transaction.transaction })));
     }
     async decrement(column, by = 1) {
-        return (await (await this.init()).increment({ [column]: -by }, {
-            where: this.whereClauses
-        }));
+        await this.loadTransaction();
+        return await (await this.init()).increment({ [column]: -by }, Object.assign({ where: this.whereClauses }, (this.transaction && { transaction: this.transaction.transaction })));
     }
-    async page(num) {
+    async page(num, count = true) {
         var _a;
         this.currentPage = num;
         this.closeQuery();
-        return (_a = await this.queryDb('findAndCountAll')) !== null && _a !== void 0 ? _a : [];
+        return (_a = (await this.queryDb("findAll", {}, count))) !== null && _a !== void 0 ? _a : [];
     }
     async create(data) {
-        return (await (await this.init()).create(data));
+        await this.loadTransaction();
+        let created = await (await this.init()).create(data, Object.assign({}, (this.transaction && { transaction: this.transaction.transaction })));
+        return created;
     }
     async createBulk(data) {
-        return await (await this.init()).bulkCreate(data);
+        await this.loadTransaction();
+        return await (await this.init()).bulkCreate(data, Object.assign({}, (this.transaction && { transaction: this.transaction.transaction })));
     }
     overrideInsert(data) {
         return {};
