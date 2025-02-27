@@ -1,3 +1,3 @@
-type Constraints = 'CASCADE' | 'SET NUL' | 'NO ACTION' | 'RESTRICT';
+type Constraints = 'CASCADE' | 'SET NULL' | 'NO ACTION' | 'RESTRICT';
 
 export default Constraints;
