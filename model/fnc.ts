@@ -1,26 +1,26 @@
-import {Fn} from "sequelize/lib/utils";
-import {fn,col,literal} from "sequelize";
+import { Fn } from "sequelize/lib/utils";
+import { fn, col, literal } from "sequelize";
 import { Literal } from "sequelize/types/utils";
 
 const acos = (value: unknown): Fn => {
-  return fn('ACOS',value)
-}
+  return fn("ACOS", value);
+};
 const cos = (value: unknown): Fn => {
-  return fn('COS',value)
-}
+  return fn("COS", value);
+};
 const radians = (value: unknown): Fn => {
-  return fn('RADIANS',value)
-}
+  return fn("RADIANS", value);
+};
 const sin = (value: unknown): Fn => {
-  return fn('SIN',value)
-}
+  return fn("SIN", value);
+};
 
-const sum = (value: unknown): Fn => {
-  return fn('SIN',value)
-}
+const sum = (value: string): Fn => {
+  return fn("SUM", col(value));
+};
 const query = (query: string): Literal => {
-  return literal(query)
-}
+  return literal(query);
+};
 
 // let range = 10;
 // where(Sequelize.fn("ST_DWithin",
@@ -29,23 +29,26 @@ const query = (query: string): Literal => {
 // Sequelize.fn("ST_MakePoint",long, lat), 4326),
 // +range * 0.016), true)
 
-
 const point = (longitude: number, latitude: number): Fn => {
-  return fn('ST_SetSRID',fn('ST_MakePoint',longitude,latitude),4326)
-}
+  return fn("ST_SetSRID", fn("ST_MakePoint", longitude, latitude), 4326);
+};
 const within = (column: string, point: Fn, range: number): Fn => {
-  return fn('ST_Within',col(column),point,+range * 0.016)
-}
+  return fn("ST_Within", col(column), point, +range * 0.016);
+};
 const latitude = (column: string): Fn => {
-  return fn('ST_X',col(column))
-}
+  return fn("ST_X", col(column));
+};
 const longitude = (column: string): Fn => {
-  return fn('ST_Y',col(column))
-}
+  return fn("ST_Y", col(column));
+};
 
-const distance = (column:string,{latitude,longitude}) => {
-  return fn('ST_Distance_Sphere',col(column),fn('ST_PointFromText', `POINT(${latitude} ${longitude})`))
-}
+const distance = (column: string, { latitude, longitude }) => {
+  return fn(
+    "ST_Distance_Sphere",
+    col(column),
+    fn("ST_PointFromText", `POINT(${latitude} ${longitude})`)
+  );
+};
 
 export default {
   acos,
@@ -58,5 +61,5 @@ export default {
   longitude,
   latitude,
   distance,
-  query
-}
+  query,
+};

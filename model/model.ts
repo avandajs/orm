@@ -7,7 +7,7 @@ import {
   QueryTypes,
   Sequelize,
   Transaction,
-  WhereOptions
+  WhereOptions,
 } from "sequelize";
 import { ModelIndexesOptions, ModelStatic } from "sequelize/types/model";
 import { isObject, snakeCase } from "lodash";
@@ -34,7 +34,6 @@ import { where } from "sequelize";
 interface Datum {
   [k: string]: any;
 }
-
 
 // Sequelize.where()
 
@@ -144,15 +143,12 @@ export default class Model {
     return this._where(condition, Op.and);
   }
 
-
-  public sqWhere(clauses: WhereOptions){
+  public sqWhere(clauses: WhereOptions) {
     this.whereClauses = clauses;
 
     return this;
     // this.sequelize?.where()
   }
-
-
 
   public having(
     condition:
@@ -173,7 +169,7 @@ export default class Model {
     return await sequelize.query(query, {
       replacements: binds,
       type: QueryTypes.SELECT,
-      logging: Env.get<boolean>("DB_LOG", false) ? true : false   
+      logging: Env.get<boolean>("DB_LOG", false) ? true : false,
     });
   }
 
@@ -244,11 +240,23 @@ export default class Model {
     if (operator in operators) {
       ret = {
         [key]: {
-          [operators[operator]]: value in aliases ? aliases[value] : Number(value) ? Number(value) : value,
+          [operators[operator]]:
+            value in aliases
+              ? aliases[value]
+              : Number(value)
+              ? Number(value)
+              : value,
         },
       };
     } else {
-      ret = { [key]: value in aliases ? aliases[value] : Number(value) ? Number(value) : value };
+      ret = {
+        [key]:
+          value in aliases
+            ? aliases[value]
+            : Number(value)
+            ? Number(value)
+            : value,
+      };
     }
     // console.log({ret})
     return ret;
@@ -412,7 +420,7 @@ export default class Model {
       limit,
       offset,
       bind: this.bindData,
-      logging: Env.get<boolean>("DB_LOG", false) ? true : false  
+      logging: Env.get<boolean>("DB_LOG", false) ? true : false,
     };
     // @ts-ignore
     let result = await instance[fn]({
@@ -443,7 +451,7 @@ export default class Model {
       },
       having: this.havingClauses,
       attributes: [],
-      logging: Env.get<boolean>("DB_LOG", false) ? true : false  
+      logging: Env.get<boolean>("DB_LOG", false) ? true : false,
     };
     return await instance.count(options);
   }
@@ -587,7 +595,6 @@ export default class Model {
             );
             model.set({ ...gl, ...newData });
           },
-          
         },
         indexes,
         // Other model options go here
@@ -595,7 +602,7 @@ export default class Model {
     );
   }
 
-  withDeleted(){
+  withDeleted() {
     this.paranoid = false;
     return this;
   }
@@ -741,9 +748,7 @@ export default class Model {
       !this.transaction.transaction
     ) {
       let sequelize = await Model.connection;
-      this.transaction.transaction = await sequelize.transaction({
-        
-      });
+      this.transaction.transaction = await sequelize.transaction({});
     }
   }
 
@@ -768,7 +773,6 @@ export default class Model {
     });
   }
 
-
   public async softDelete() {
     await this.loadTransaction();
     return await (
@@ -786,7 +790,7 @@ export default class Model {
     ).update(data, {
       where: this.whereClauses,
       ...(this.transaction && { transaction: this.transaction.transaction }),
-      logging: Env.get<boolean>("DB_LOG", false) ? console.log : false 
+      logging: Env.get<boolean>("DB_LOG", false) ? console.log : false,
     })) as unknown as Promise<DataOf<this>>;
   }
 
@@ -833,9 +837,7 @@ export default class Model {
       ...(this.transaction && { transaction: this.transaction.transaction }),
     });
 
-
-
-    return created
+    return created;
   }
 
   public async createBulk(data: DataOf<this>[]): Promise<DataOf<this>[]> {

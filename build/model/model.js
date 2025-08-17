@@ -97,7 +97,7 @@ class Model {
         return await sequelize.query(query, {
             replacements: binds,
             type: sequelize_1.QueryTypes.SELECT,
-            logging: app_1.Env.get("DB_LOG", false) ? true : false
+            logging: app_1.Env.get("DB_LOG", false) ? true : false,
         });
     }
     whereRaw(condition, target = "where") {
@@ -154,12 +154,22 @@ class Model {
         if (operator in operators) {
             ret = {
                 [key]: {
-                    [operators[operator]]: value in aliases ? aliases[value] : Number(value) ? Number(value) : value,
+                    [operators[operator]]: value in aliases
+                        ? aliases[value]
+                        : Number(value)
+                            ? Number(value)
+                            : value,
                 },
             };
         }
         else {
-            ret = { [key]: value in aliases ? aliases[value] : Number(value) ? Number(value) : value };
+            ret = {
+                [key]: value in aliases
+                    ? aliases[value]
+                    : Number(value)
+                        ? Number(value)
+                        : value,
+            };
         }
         // console.log({ret})
         return ret;
@@ -278,7 +288,7 @@ class Model {
             limit,
             offset,
             bind: this.bindData,
-            logging: app_1.Env.get("DB_LOG", false) ? true : false
+            logging: app_1.Env.get("DB_LOG", false) ? true : false,
         };
         // @ts-ignore
         let result = await instance[fn](Object.assign(Object.assign({}, options), {
@@ -300,7 +310,7 @@ class Model {
             where: Object.assign({}, this.whereClauses),
             having: this.havingClauses,
             attributes: [],
-            logging: app_1.Env.get("DB_LOG", false) ? true : false
+            logging: app_1.Env.get("DB_LOG", false) ? true : false,
         };
         return await instance.count(options);
     }

@@ -1,5 +1,3 @@
-import {Faker} from "@faker-js/faker"
-
-export default interface Seeder{
-    run(faker: Faker): void | Promise<void>
+export default interface Seeder {
+  run(faker: any): void | Promise<void>;
 }
