@@ -24,6 +24,13 @@ import { Literal } from "sequelize/lib/utils";
 import ModelTransaction from "./transaction";
 import { where } from "sequelize";
 
+enum ISOLATION_LEVELS {
+  READ_UNCOMMITTED = 'READ UNCOMMITTED',
+  READ_COMMITTED = 'READ COMMITTED',
+  REPEATABLE_READ = 'REPEATABLE READ',
+  SERIALIZABLE = 'SERIALIZABLE',
+}
+
 // type Fn = typeof fn;
 
 /*
@@ -538,9 +545,10 @@ export default class Model {
         type,
         unique: value.unique ? value.unique : undefined,
         comment: value.comment,
-        defaultValue: value?.dataType?.value,
+        defaultValue: value?.dataType?.value ?? value?.dataType?.data,
         allowNull:
           typeof value.nullable == "undefined" ? false : value.nullable,
+        ...(value.primaryKey && { primaryKey: true }),
         ...(value.onDeleted && { onDelete: value.onDeleted }),
         ...(value.onUpdated && { onUpdated: value.onUpdated }),
         ...(value.references && {
@@ -748,7 +756,13 @@ export default class Model {
       !this.transaction.transaction
     ) {
       let sequelize = await Model.connection;
-      this.transaction.transaction = await sequelize.transaction({});
+      this.transaction.transaction = await sequelize.transaction({
+        isolationLevel: this.transaction.isolationLevel ?? Transaction.ISOLATION_LEVELS.READ_COMMITTED,
+      });
+      Transaction.ISOLATION_LEVELS.READ_COMMITTED;
+      Transaction.ISOLATION_LEVELS.READ_UNCOMMITTED;
+      Transaction.ISOLATION_LEVELS.REPEATABLE_READ;
+      Transaction.ISOLATION_LEVELS.SERIALIZABLE;
     }
   }
 

@@ -30,4 +30,5 @@ export default interface ColumnOptions<ValueType> {
   onUpdated?: Constraints;
   srid?: number;
   index?: boolean | ColumnIndex;
+  primaryKey?: boolean;
 }

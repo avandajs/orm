@@ -12,6 +12,8 @@ import Enum from "../dataTypes/Enum";
 import {StringDataType} from "sequelize/types";
 import {DataTypes, EnumDataType} from "sequelize";
 import Point from "../dataTypes/Point";
+import Uuid from "../dataTypes/Uuid";
+import {v7 as uuidv7} from "uuid";
 
 
 const column = function <ValueDataType>(dataType: DataType<ValueDataType>,options?: ColumnOptions<ValueDataType>){
@@ -72,6 +74,17 @@ const _enum = function (acceptedValues: string[] , options?: ColumnOptions<EnumD
     e.args = acceptedValues
     return column<EnumDataType<string>>(e, options)
 }
+const uuid = function (options?: ColumnOptions<DataTypes.AbstractDataTypeConstructor>){
+    return column<DataTypes.AbstractDataTypeConstructor>(new Uuid(), options)
+}
+const id = function (options?: ColumnOptions<DataTypes.AbstractDataTypeConstructor> & {version?: 4 | 7}){
+    const {version = 7, ...rest} = options ?? {}
+    const generator = version === 4 ? DataTypes.UUIDV4 : uuidv7
+    return column<DataTypes.AbstractDataTypeConstructor>(new Uuid(generator), {
+        primaryKey: true,
+        ...rest
+    })
+}
 
 export default {
     text,
@@ -81,5 +94,7 @@ export default {
     decimal,
     enum: _enum,
     boolean,
-    point
+    point,
+    uuid,
+    id
 }

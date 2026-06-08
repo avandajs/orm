@@ -10,6 +10,13 @@ const utils_1 = require("sequelize/lib/utils");
 const app_1 = require("@avanda/app");
 const moment_1 = __importDefault(require("moment"));
 const transaction_1 = __importDefault(require("./transaction"));
+var ISOLATION_LEVELS;
+(function (ISOLATION_LEVELS) {
+    ISOLATION_LEVELS["READ_UNCOMMITTED"] = "READ UNCOMMITTED";
+    ISOLATION_LEVELS["READ_COMMITTED"] = "READ COMMITTED";
+    ISOLATION_LEVELS["REPEATABLE_READ"] = "REPEATABLE READ";
+    ISOLATION_LEVELS["SERIALIZABLE"] = "SERIALIZABLE";
+})(ISOLATION_LEVELS || (ISOLATION_LEVELS = {}));
 // Sequelize.where()
 class Model {
     constructor() {
@@ -353,7 +360,7 @@ class Model {
         return this.initInstance;
     }
     async convertToSequelize() {
-        var _a, _b, _c, _d, _e;
+        var _a, _b, _c, _d, _e, _f, _g;
         this.sequelize = await Model.connection;
         let structure = {};
         let indexes = [];
@@ -377,20 +384,20 @@ class Model {
                         ...(typeof value.index.with != "undefined" ? value.index.with : []),
                     ] }), (value.index.name && { name: value.index.name })), (value.index.type && { type: value.index.type })), (value.index.where && { where: value.index.where })));
             }
-            structure[prop] = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({ type, unique: value.unique ? value.unique : undefined, comment: value.comment, defaultValue: (_b = value === null || value === void 0 ? void 0 : value.dataType) === null || _b === void 0 ? void 0 : _b.value, allowNull: typeof value.nullable == "undefined" ? false : value.nullable }, (value.onDeleted && { onDelete: value.onDeleted })), (value.onUpdated && { onUpdated: value.onUpdated })), (value.references && {
+            structure[prop] = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({ type, unique: value.unique ? value.unique : undefined, comment: value.comment, defaultValue: (_c = (_b = value === null || value === void 0 ? void 0 : value.dataType) === null || _b === void 0 ? void 0 : _b.value) !== null && _c !== void 0 ? _c : (_d = value === null || value === void 0 ? void 0 : value.dataType) === null || _d === void 0 ? void 0 : _d.data, allowNull: typeof value.nullable == "undefined" ? false : value.nullable }, (value.primaryKey && { primaryKey: true })), (value.onDeleted && { onDelete: value.onDeleted })), (value.onUpdated && { onUpdated: value.onUpdated })), (value.references && {
                 references: {
                     model: typeof value.references == "string"
                         ? value.references
-                        : await ((_c = value.references) === null || _c === void 0 ? void 0 : _c.init()),
+                        : await ((_e = value.references) === null || _e === void 0 ? void 0 : _e.init()),
                     key: "id",
                 },
-            })), (((_d = value === null || value === void 0 ? void 0 : value.dataType) === null || _d === void 0 ? void 0 : _d.getter) && {
+            })), (((_f = value === null || value === void 0 ? void 0 : value.dataType) === null || _f === void 0 ? void 0 : _f.getter) && {
                 get() {
                     var _a, _b;
                     const rawValue = this.getDataValue(prop);
                     return (_b = (_a = value === null || value === void 0 ? void 0 : value.dataType) === null || _a === void 0 ? void 0 : _a.getter) === null || _b === void 0 ? void 0 : _b.call(_a, rawValue);
                 },
-            })), (((_e = value === null || value === void 0 ? void 0 : value.dataType) === null || _e === void 0 ? void 0 : _e.setter) && {
+            })), (((_g = value === null || value === void 0 ? void 0 : value.dataType) === null || _g === void 0 ? void 0 : _g.setter) && {
                 async set(val) {
                     var _a, _b;
                     let newValue = await ((_b = (_a = value === null || value === void 0 ? void 0 : value.dataType) === null || _a === void 0 ? void 0 : _a.setter) === null || _b === void 0 ? void 0 : _b.call(_a, val));
@@ -527,10 +534,17 @@ class Model {
         return await (await this.init()).create(this.getOnlyPropsFromInstance(), Object.assign({}, (this.transaction && { transaction: this.transaction.transaction })));
     }
     async loadTransaction() {
+        var _a;
         if (this.transaction instanceof transaction_1.default &&
             !this.transaction.transaction) {
             let sequelize = await Model.connection;
-            this.transaction.transaction = await sequelize.transaction({});
+            this.transaction.transaction = await sequelize.transaction({
+                isolationLevel: (_a = this.transaction.isolationLevel) !== null && _a !== void 0 ? _a : sequelize_1.Transaction.ISOLATION_LEVELS.READ_COMMITTED,
+            });
+            sequelize_1.Transaction.ISOLATION_LEVELS.READ_COMMITTED;
+            sequelize_1.Transaction.ISOLATION_LEVELS.READ_UNCOMMITTED;
+            sequelize_1.Transaction.ISOLATION_LEVELS.REPEATABLE_READ;
+            sequelize_1.Transaction.ISOLATION_LEVELS.SERIALIZABLE;
         }
     }
     async truncate() {
