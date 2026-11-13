@@ -4,6 +4,13 @@
   "description": "Avanda ORM ",
   "main": "build/index.js",
   "types": "index.ts",
+  "exports": {
+    ".": {
+      "bun": "./index.ts",
+      "types": "./index.ts",
+      "default": "./build/index.js"
+    }
+  },
   "author": "Wharley01",
   "license": "MIT",
   "private": false,
@@ -11,7 +18,8 @@
     "access": "public"
   },
   "scripts": {
-    "dev": "nodemon"
+    "dev": "tsc --watch",
+    "test": "node --test security.test.js"
   },
   "dependencies": {
     "@avanda/app": "^2.3.0",
@@ -21,6 +29,7 @@
     "knex": "^2.3.0",
     "lodash": "^4.17.21",
     "moment": "^2.29.1",
+    "mysql2": "^3.11.5",
     "reflect-metadata": "^0.1.13",
     "sequelize": "^6.17.0",
     "uuid": "^11.1.0"
