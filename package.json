@@ -1,12 +1,11 @@
 {
   "name": "@avanda/orm",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Avanda ORM ",
   "main": "build/index.js",
   "types": "index.ts",
   "exports": {
     ".": {
-      "bun": "./index.ts",
       "types": "./index.ts",
       "default": "./build/index.js"
     }
@@ -19,7 +18,7 @@
   },
   "scripts": {
     "dev": "tsc --watch",
-    "test": "node --test security.test.js"
+    "test": "node --test security.test.js packaging.test.js"
   },
   "dependencies": {
     "@avanda/app": "^2.3.0",
