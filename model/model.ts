@@ -97,10 +97,15 @@ export default class Model {
     const properties: { options: ColumnOptions<unknown>; name: string }[] =
       Reflect.getMetadata(origin.constructor.name, origin);
     const result = {};
+    // the decorator's options are shared by every instance of the model, so
+    // this instance's values go on a copy
     properties.forEach((prop) => {
-      let options = prop.options;
-      options.dataType.value = this[prop.name];
-      result[prop.name] = options;
+      const dataType = Object.assign(
+        Object.create(Object.getPrototypeOf(prop.options.dataType)),
+        prop.options.dataType,
+        { value: this[prop.name] }
+      );
+      result[prop.name] = { ...prop.options, dataType };
     });
     return result;
   }
@@ -232,41 +237,35 @@ export default class Model {
       null: null,
     };
 
-    let tokens = /(\w+)\s+([^\w\s]+|not|is|LIKE|NOT\s+LIKE)\s+(.+)/i.exec(
-      query
-    );
+    // the whole condition must be `column operator value`: anything this can't
+    // read is refused, because a condition that is dropped matches every row
+    let tokens =
+      /^\s*(\w+)\s+(not\s+like|like|not|is|[^\w\s]+)\s+([\s\S]+)$/i.exec(query);
 
-    if (!tokens) return {};
+    if (!tokens)
+      throw new runtimeError(`Could not read where condition: "${query}"`);
 
-    // console.log({tokens})
-
-    let operator = tokens[2];
+    let operator = tokens[2].toLowerCase().replace(/\s+/g, " ");
     let key = tokens[1];
     let value = tokens[3];
-    let ret = {};
-    if (operator in operators) {
-      ret = {
-        [key]: {
-          [operators[operator]]:
-            value in aliases
-              ? aliases[value]
-              : Number(value)
-              ? Number(value)
-              : value,
-        },
-      };
-    } else {
-      ret = {
-        [key]:
-          value in aliases
-            ? aliases[value]
-            : Number(value)
-            ? Number(value)
-            : value,
-      };
-    }
-    // console.log({ret})
-    return ret;
+
+    if (!Object.prototype.hasOwnProperty.call(operators, operator))
+      throw new runtimeError(
+        `Unsupported operator "${tokens[2]}" in where condition: "${query}"`
+      );
+
+    return {
+      [key]: {
+        [operators[operator]]: Object.prototype.hasOwnProperty.call(
+          aliases,
+          value
+        )
+          ? aliases[value]
+          : Number(value)
+          ? Number(value)
+          : value,
+      },
+    };
   }
 
   private _where(
@@ -372,7 +371,11 @@ export default class Model {
         "Specify column to apply greaterThan() to user the where() function"
       );
 
-    this.whereRaw(`${this.tempColumn} > ${value}`, this.tempTarget);
+    this.updateClauses(
+      Op.and,
+      { [this.tempColumn]: { [Op.gt]: value } },
+      this.tempTarget
+    );
 
     return this;
   }
@@ -382,7 +385,11 @@ export default class Model {
         "Specify column to apply greaterThan() to user the where() function"
       );
 
-    this.whereRaw(`${this.tempColumn} < ${value}`, this.tempTarget);
+    this.updateClauses(
+      Op.and,
+      { [this.tempColumn]: { [Op.lt]: value } },
+      this.tempTarget
+    );
     return this;
   }
 
@@ -487,8 +494,25 @@ export default class Model {
     return (await this.queryDb<DataOf<this>>("findOne")) ?? null;
   }
 
-  orderBy(column: ColumnNames<this>, order: "DESC" | "ASC" = "DESC") {
-    this.orders.push(literal(`${column as string} ${order}`));
+  // A column name is quoted by Sequelize. For an expression, pass Fnc.query(...)
+  // or another Fn/Literal, never a string built from request data.
+  orderBy(
+    column: ColumnNames<this> | Fn | Literal,
+    order: "DESC" | "ASC" = "DESC"
+  ) {
+    const direction = String(order).toUpperCase();
+    if (direction !== "ASC" && direction !== "DESC")
+      throw new runtimeError(`orderBy() direction must be ASC or DESC`);
+
+    if (typeof column == "string") {
+      if (!/^\w+$/.test(column))
+        throw new runtimeError(
+          `orderBy() takes a column name, use Fnc.query() for an expression`
+        );
+      this.orders.push([column, direction]);
+    } else {
+      this.orders.push([column, direction] as any);
+    }
     return this;
   }
 
@@ -616,7 +640,7 @@ export default class Model {
   }
 
   whereColIsNull<T>(column: ColumnNames<this> | T) {
-    this.whereRaw(`${column} is null`);
+    this.updateClauses(Op.and, { [column as string]: { [Op.is]: null } });
     return this;
   }
 
@@ -657,11 +681,17 @@ export default class Model {
     count: number,
     unit: "days" | "hours" | "minutes" | "months" | "years" = "days"
   ) {
+    if (
+      !Number.isFinite(Number(count)) ||
+      !["days", "hours", "minutes", "months", "years"].includes(unit)
+    )
+      throw new runtimeError(
+        "whereNotCreatedSince() takes a number and a unit of days, hours, minutes, months or years"
+      );
+
     this.updateClauses(Op.and, {
       ["createdAt"]: {
-        [Op.lte]: Sequelize.literal(
-          `(NOW() - INTERVAL ${count} ${unit?.toUpperCase()})`
-        ),
+        [Op.lte]: moment().subtract(Number(count), unit).toDate(),
       },
     });
     return this;
@@ -698,7 +728,7 @@ export default class Model {
   }
 
   whereColIsNotNull<T>(column: ColumnNames<this> | T) {
-    this.whereRaw(`${column} not null`);
+    this.updateClauses(Op.and, { [column as string]: { [Op.not]: null } });
     return this;
   }
 
@@ -714,7 +744,7 @@ export default class Model {
     if (!this.tempColumn)
       throw new runtimeError(`Chain like() method with where(column: string)`);
 
-    this.whereRaw(`${this.tempColumn} like ${keyword}`);
+    this.updateClauses(Op.and, { [this.tempColumn]: { [Op.like]: keyword } });
 
     return this;
   }
@@ -725,7 +755,9 @@ export default class Model {
         `Chain notLike() method with where(column: string)`
       );
 
-    this.whereRaw(`${this.tempColumn} not like ${keyword}`);
+    this.updateClauses(Op.and, {
+      [this.tempColumn]: { [Op.notLike]: keyword },
+    });
 
     return this;
   }
